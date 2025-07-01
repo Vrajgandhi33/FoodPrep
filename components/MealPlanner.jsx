@@ -1,37 +1,44 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { supabase } from "../lib/supabase"
+import { useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
 
 export default function MealPlanner({ session }) {
-  const [mealPlans, setMealPlans] = useState([])
-  const [recipes, setRecipes] = useState([])
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
-  const [showAddMeal, setShowAddMeal] = useState(false)
-  const [selectedMealType, setSelectedMealType] = useState("breakfast")
-  const [selectedRecipe, setSelectedRecipe] = useState("")
+  const [mealPlans, setMealPlans] = useState([]);
+  const [recipes, setRecipes] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  const [showAddMeal, setShowAddMeal] = useState(false);
+  const [selectedMealType, setSelectedMealType] = useState("breakfast");
+  const [selectedRecipe, setSelectedRecipe] = useState("");
 
   useEffect(() => {
-    fetchRecipes()
-    fetchMealPlans()
-  }, [session, selectedDate])
+    fetchRecipes();
+    fetchMealPlans();
+  }, [session, selectedDate]);
 
   const fetchRecipes = async () => {
     try {
-      const { data, error } = await supabase.from("recipes").select("*").eq("user_id", session.user.id).order("name")
+      const { data, error } = await supabase
+        .from("recipes")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .order("name");
 
-      if (error) throw error
-      setRecipes(data || [])
+      if (error) throw error;
+      setRecipes(data || []);
     } catch (error) {
-      console.error("Error fetching recipes:", error)
+      console.error("Error fetching recipes:", error);
     }
-  }
+  };
 
   const fetchMealPlans = async () => {
     try {
       const { data, error } = await supabase
         .from("meal_plans")
-        .select(`
+        .select(
+          `
           *,
           recipes (
             id,
@@ -40,20 +47,21 @@ export default function MealPlanner({ session }) {
             prep_time,
             cook_time
           )
-        `)
+        `
+        )
         .eq("user_id", session.user.id)
         .eq("date", selectedDate)
-        .order("meal_type")
+        .order("meal_type");
 
-      if (error) throw error
-      setMealPlans(data || [])
+      if (error) throw error;
+      setMealPlans(data || []);
     } catch (error) {
-      console.error("Error fetching meal plans:", error)
+      console.error("Error fetching meal plans:", error);
     }
-  }
+  };
 
   const handleAddMeal = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
     try {
       const { error } = await supabase.from("meal_plans").insert([
@@ -63,63 +71,71 @@ export default function MealPlanner({ session }) {
           date: selectedDate,
           meal_type: selectedMealType,
         },
-      ])
+      ]);
 
-      if (error) throw error
+      if (error) throw error;
 
-      setShowAddMeal(false)
-      setSelectedRecipe("")
-      fetchMealPlans()
+      setShowAddMeal(false);
+      setSelectedRecipe("");
+      fetchMealPlans();
     } catch (error) {
-      console.error("Error adding meal:", error)
-      alert("Error adding meal to plan")
+      console.error("Error adding meal:", error);
+      alert("Error adding meal to plan");
     }
-  }
+  };
 
   const handleDeleteMeal = async (mealId) => {
     try {
-      const { error } = await supabase.from("meal_plans").delete().eq("id", mealId)
+      const { error } = await supabase
+        .from("meal_plans")
+        .delete()
+        .eq("id", mealId);
 
-      if (error) throw error
-      fetchMealPlans()
+      if (error) throw error;
+      fetchMealPlans();
     } catch (error) {
-      console.error("Error deleting meal:", error)
+      console.error("Error deleting meal:", error);
     }
-  }
+  };
 
   const getMealsByType = (mealType) => {
-    return mealPlans.filter((meal) => meal.meal_type === mealType)
-  }
+    return mealPlans.filter((meal) => meal.meal_type === mealType);
+  };
 
   const getTotalCalories = () => {
     return mealPlans.reduce((total, meal) => {
-      return total + (meal.recipes?.calories || 0)
-    }, 0)
-  }
+      return total + (meal.recipes?.calories || 0);
+    }, 0);
+  };
 
   const generateShoppingList = async () => {
     try {
       // Get all recipes for the selected date
-      const recipeIds = mealPlans.map((meal) => meal.recipe_id)
+      const recipeIds = mealPlans.map((meal) => meal.recipe_id);
 
       if (recipeIds.length === 0) {
-        alert("No meals planned for this date")
-        return
+        alert("No meals planned for this date");
+        return;
       }
 
-      const { data: recipesData, error } = await supabase.from("recipes").select("ingredients").in("id", recipeIds)
+      const { data: recipesData, error } = await supabase
+        .from("recipes")
+        .select("ingredients")
+        .in("id", recipeIds);
 
-      if (error) throw error
+      if (error) throw error;
 
       // Parse ingredients and add to shopping list
-      const allIngredients = []
+      const allIngredients = [];
       recipesData.forEach((recipe) => {
-        const ingredients = recipe.ingredients.split("\n").filter((ing) => ing.trim())
-        allIngredients.push(...ingredients)
-      })
+        const ingredients = recipe.ingredients
+          .split("\n")
+          .filter((ing) => ing.trim());
+        allIngredients.push(...ingredients);
+      });
 
       // Add unique ingredients to shopping list
-      const uniqueIngredients = [...new Set(allIngredients)]
+      const uniqueIngredients = [...new Set(allIngredients)];
 
       for (const ingredient of uniqueIngredients) {
         await supabase.from("shopping_list").upsert(
@@ -130,16 +146,16 @@ export default function MealPlanner({ session }) {
               completed: false,
             },
           ],
-          { onConflict: "user_id,item" },
-        )
+          { onConflict: "user_id,item" }
+        );
       }
 
-      alert(`Added ${uniqueIngredients.length} items to shopping list!`)
+      alert(`Added ${uniqueIngredients.length} items to shopping list!`);
     } catch (error) {
-      console.error("Error generating shopping list:", error)
-      alert("Error generating shopping list")
+      console.error("Error generating shopping list:", error);
+      alert("Error generating shopping list");
     }
-  }
+  };
 
   return (
     <div className="meal-planner">
@@ -178,7 +194,10 @@ export default function MealPlanner({ session }) {
           <div className="modal">
             <div className="modal-header">
               <h3>Add Meal to Plan</h3>
-              <button className="close-btn" onClick={() => setShowAddMeal(false)}>
+              <button
+                className="close-btn"
+                onClick={() => setShowAddMeal(false)}
+              >
                 ×
               </button>
             </div>
@@ -186,7 +205,10 @@ export default function MealPlanner({ session }) {
             <form onSubmit={handleAddMeal} className="add-meal-form">
               <div className="form-group">
                 <label>Meal Type</label>
-                <select value={selectedMealType} onChange={(e) => setSelectedMealType(e.target.value)}>
+                <select
+                  value={selectedMealType}
+                  onChange={(e) => setSelectedMealType(e.target.value)}
+                >
                   <option value="breakfast">Breakfast</option>
                   <option value="lunch">Lunch</option>
                   <option value="dinner">Dinner</option>
@@ -196,7 +218,11 @@ export default function MealPlanner({ session }) {
 
               <div className="form-group">
                 <label>Recipe</label>
-                <select value={selectedRecipe} onChange={(e) => setSelectedRecipe(e.target.value)} required>
+                <select
+                  value={selectedRecipe}
+                  onChange={(e) => setSelectedRecipe(e.target.value)}
+                  required
+                >
                   <option value="">Select a recipe</option>
                   {recipes.map((recipe) => (
                     <option key={recipe.id} value={recipe.id}>
@@ -207,7 +233,11 @@ export default function MealPlanner({ session }) {
               </div>
 
               <div className="form-actions">
-                <button type="button" className="secondary-btn" onClick={() => setShowAddMeal(false)}>
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => setShowAddMeal(false)}
+                >
                   Cancel
                 </button>
                 <button type="submit" className="primary-btn">
@@ -222,7 +252,9 @@ export default function MealPlanner({ session }) {
       <div className="meals-timeline">
         {["breakfast", "lunch", "dinner", "snack"].map((mealType) => (
           <div key={mealType} className="meal-section">
-            <h3 className="meal-type-header">{mealType.charAt(0).toUpperCase() + mealType.slice(1)}</h3>
+            <h3 className="meal-type-header">
+              {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
+            </h3>
 
             <div className="meal-items">
               {getMealsByType(mealType).map((meal) => (
@@ -230,9 +262,17 @@ export default function MealPlanner({ session }) {
                   <div className="meal-info">
                     <h4>{meal.recipes?.name || "Recipe not found"}</h4>
                     <p>{meal.recipes?.calories || 0} calories</p>
-                    <p>⏱️ {(meal.recipes?.prep_time || 0) + (meal.recipes?.cook_time || 0)} min</p>
+                    <p>
+                      ⏱️{" "}
+                      {(meal.recipes?.prep_time || 0) +
+                        (meal.recipes?.cook_time || 0)}{" "}
+                      min
+                    </p>
                   </div>
-                  <button className="delete-btn" onClick={() => handleDeleteMeal(meal.id)}>
+                  <button
+                    className="delete-btn"
+                    onClick={() => handleDeleteMeal(meal.id)}
+                  >
                     Remove
                   </button>
                 </div>
@@ -247,6 +287,13 @@ export default function MealPlanner({ session }) {
           </div>
         ))}
       </div>
+
+      {mealPlans.length === 0 && (
+        <div className="empty-state">
+          <h3>No meals planned</h3>
+          <p>Start planning your meals for the week!</p>
+        </div>
+      )}
     </div>
-  )
+  );
 }

@@ -1,48 +1,47 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { supabase } from "../lib/supabase"
+import { useState } from "react";
+import { supabase } from "../lib/supabase";
 
 export default function Auth() {
-  const [loading, setLoading] = useState(false)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [isSignUp, setIsSignUp] = useState(false)
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
 
   const handleAuth = async (e) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
 
     try {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-        })
-        if (error) throw error
-        alert("Check your email for the confirmation link!")
+        });
+        if (error) throw error;
+        alert("Check your email for the confirmation link!");
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
-        })
-        if (error) throw error
+        });
+        if (error) throw error;
       }
     } catch (error) {
-      alert(error.message)
+      alert(error.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
           <h1>🍽️ FoodPrep</h1>
-          <p>Your personal meal planning assistant</p>
+          <p>{isSignUp ? "Create your account" : "Welcome back"}</p>
         </div>
-
         <form onSubmit={handleAuth} className="auth-form">
           <div className="form-group">
             <label htmlFor="email">Email</label>
@@ -76,12 +75,16 @@ export default function Auth() {
         <div className="auth-toggle">
           <p>
             {isSignUp ? "Already have an account?" : "Don't have an account?"}
-            <button type="button" className="toggle-btn" onClick={() => setIsSignUp(!isSignUp)}>
+            <button
+              type="button"
+              className="toggle-btn"
+              onClick={() => setIsSignUp(!isSignUp)}
+            >
               {isSignUp ? "Sign In" : "Sign Up"}
             </button>
           </p>
         </div>
       </div>
     </div>
-  )
+  );
 }
